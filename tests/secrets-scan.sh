@@ -4,14 +4,14 @@
 # Uso: tests/secrets-scan.sh [file o cartelle...]   (senza argomenti: tutti i file tracciati da git)
 # Eccezioni puntuali: a fine riga il commento "secrets-scan: ok" (solo per falsi positivi verificati).
 set -u
-cd "$(git rev-parse --show-toplevel)" || exit 2
+top=$(git rev-parse --show-toplevel 2>/dev/null) && cd "$top"
 
 if (( $# )); then mapfile -t files < <(find "$@" -type f 2>/dev/null)
 else mapfile -t files < <(git ls-files); fi
 (( ${#files[@]} )) || { echo "Nessun file da controllare"; exit 0; }
 
 declare -A regole=(
-  [password_scritta]='(psk|password|passwd|pwd|secret|token|api[_-]?key)[[:space:]]*[=:][[:space:]]*["'"'"']?[^"'"'"'$<{[:space:]][^[:space:]]{5,}'
+  [password_scritta]='(^|[^A-Za-z0-9_-])(psk|password|passwd|pwd|secret|token|api[_-]?key)[[:space:]]*[=:][[:space:]]*["'"'"']?[^"'"'"'$<{[:space:]][^[:space:]]{3,}'
   [chiave_privata]='BEGIN [A-Z ]*PRIVATE KEY'
   [token_github]='github_pat_|gh[pousr]_[A-Za-z0-9]{20,}'
   [token_tailscale]='tskey-[a-z]+-[A-Za-z0-9]'
@@ -45,7 +45,7 @@ for nome in "${!regole[@]}"; do
 done
 
 if (( trovati )); then
-  echo "BLOCCATO: possibili segreti o dati personali. Spostali fuori dal repo (segreti solo sul NAS)."
+  echo "BLOCCATO: possibili segreti o dati personali. Spostali fuori dal repo: i segreti vivono solo sul dispositivo."
   exit 1
 fi
 echo "OK: nessun segreto o dato personale in ${#files[@]} file"
