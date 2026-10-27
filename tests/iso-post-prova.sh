@@ -13,7 +13,7 @@ PY
 )
 sudo podman run --rm -i "$IMG" bash -s <<SCRIPT
 echo "== gruppi in /etc/group prima:"; grep -E '^(wheel|users):' /etc/group || echo "(nessuno: stanno in /usr/lib/group)"
-mkdir -p /var/home /var/roothome
+rm -rf /var/home /var/roothome  # come all'installazione: non esistono ancora
 $post
 echo "== verifica"
 set -e

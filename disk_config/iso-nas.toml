@@ -26,6 +26,7 @@ rootpw --lock
 reboot --eject
 
 %post --log=/root/nas-os-post.log
+mkdir -p /var/home /var/roothome
 # Prima di tutto la chiave per root: accesso garantito anche se il resto fallisce.
 install -d -m 700 /var/roothome/.ssh
 echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILSgnGqraMQ8+DyAZzPB9Nkz5zhgqHdPNMeUq1Ohd3df' > /var/roothome/.ssh/authorized_keys
