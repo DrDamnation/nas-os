@@ -16,7 +16,12 @@ scarica "$gh/cockpit-identities/releases/download/v${IDENTITIES_VERSION}/cockpit
 scarica "$gh/cockpit-navigator/archive/refs/tags/v${NAVIGATOR_VERSION}.tar.gz" \
     "$NAVIGATOR_SHA256" navigator.tgz
 
-dnf5 install -y firewalld "$d/file-sharing.rpm" "$d/identities.rpm"
+# Gli RPM sono solo pagine statiche senza script. Le loro dipendenze dichiarate "perl" (che su
+# Fedora trascina gcc e tutta la toolchain) e "cockpit" (su uCore cockpit-ws gira come container)
+# si soddisfano con i pacchetti leggeri qui sotto; poi gli RPM si installano senza risolvere dipendenze.
+# python3-botocore (solo per la pagina S3 di file-sharing) resta fuori.
+dnf5 install -y --setopt=install_weak_deps=False firewalld cockpit-bridge attr nfs-utils     samba-common-tools perl-interpreter psmisc openssh passwd sudo util-linux-user
+rpm -i --nodeps "$d/file-sharing.rpm" "$d/identities.rpm"
 tar -xzf "$d/navigator.tgz" -C "$d"
 mkdir -p /usr/share/cockpit
 cp -a "$d/cockpit-navigator-${NAVIGATOR_VERSION}/navigator" /usr/share/cockpit/navigator

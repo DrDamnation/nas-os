@@ -27,6 +27,7 @@ for mod in asustor asustor_it87 asustor_gpio_it87; do
 done
 check "niente kernel-devel rimasto" ! rpm -q kernel-devel
 check "niente gcc rimasto" ! rpm -q gcc
+check "niente toolchain C++" ! rpm -q gcc-c++
 
 section "Ventola e sensori"
 check "karg acpi_enforce_resources=lax" grep -q 'acpi_enforce_resources=lax' "$KARGS"
