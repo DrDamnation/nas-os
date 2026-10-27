@@ -1,0 +1,12 @@
+# Al primo avvio systemd applica le preset (preset-all) e le FCOS hanno "disable *":
+# senza queste righe spegne tutto quello che l'immagine abilita con systemctl enable.
+enable fancontrol.service
+enable var-mnt-dati.mount
+enable smartd.service
+enable raid-check.timer
+enable docker.service
+enable tailscaled.service
+enable nas-stacks.service
+enable smb.service
+enable nas-backup.timer
+enable cockpit.service

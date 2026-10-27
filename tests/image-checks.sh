@@ -95,4 +95,11 @@ check "cartella segreti 0700" grep -q '^d /var/lib/nas-os/secrets 0700 root root
 check "backup.conf solo esempio" bash -c '! grep -vE "^[[:space:]]*(#|$)" /etc/nas-os/backup.conf'
 check "jq e curl per l'avviso" bash -c 'command -v jq && command -v curl'
 
+section "Primo avvio (preset-all, come fa systemd al primo boot)"
+systemctl preset-all >/dev/null 2>&1 || true
+for u in fancontrol.service var-mnt-dati.mount smartd.service raid-check.timer docker.service tailscaled.service nas-stacks.service smb.service nas-backup.timer cockpit.service; do
+    check "$u resta abilitato dopo preset-all" systemctl is-enabled "$u"
+done
+check "fancontrol non salta senza /etc/fancontrol" grep -qx 'ConditionFileNotEmpty=' /usr/lib/systemd/system/fancontrol.service.d/10-nas.conf
+
 finish
