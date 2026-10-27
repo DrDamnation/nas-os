@@ -56,6 +56,7 @@ jobs:
           bash tests/backup.sh
           bash tests/dati-in-scrittura.sh
           bash tests/iso-config.sh
+          bash tests/copia-nvme.sh
 
       - name: Check Just Syntax
         shell: bash

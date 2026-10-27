@@ -1,0 +1,11 @@
+[Unit]
+Description=Copia dell'NVMe veloce (database e configurazioni) sul RAID
+After=var-mnt-dati.mount docker.service
+RequiresMountsFor=/var/mnt/dati
+OnFailure=nas-avviso@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/nas-os/copia-nvme
+Nice=10
+IOSchedulingClass=idle

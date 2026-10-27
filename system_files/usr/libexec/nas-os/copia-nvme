@@ -1,0 +1,37 @@
+#!/bin/bash
+# Copia oraria dell'NVMe veloce sul RAID: l'NVMe è un disco solo, il RAID ne tiene sempre una copia.
+# 1) dump coerenti dei database (gli stessi DUMP di backup.conf), 2) copia delle cartelle.
+# Uso: copia-nvme [backup.conf]. Esce 1 se qualcosa non va (l'avviso Telegram parte da systemd).
+set -uo pipefail
+conf=${1:-/etc/nas-os/backup.conf}
+veloce=${VELOCE:-/var/home/veloce}
+copia=${COPIA:-/var/mnt/dati/Docker/.nvme-copia}
+rsync=${RSYNC:-rsync}
+dati=${DATI:-/var/mnt/dati}
+findmnt_=${FINDMNT:-findmnt}
+
+opts=$("$findmnt_" -no OPTIONS "$dati" 2>/dev/null) || { echo "copia-nvme: $dati non montato, niente copia" >&2; exit 1; }
+[[ ,$opts, == *,rw,* ]] || { echo "copia-nvme: $dati in sola lettura, niente copia" >&2; exit 1; }
+[[ -d $veloce ]] || { echo "copia-nvme: manca $veloce" >&2; exit 1; }
+DUMP=()
+# shellcheck source=/dev/null
+[[ -r $conf ]] && source "$conf"
+
+mkdir -p "$copia/dump" "$copia/file"
+errori=0
+for d in "${DUMP[@]}"; do
+    nome=${d%%|*} cmd=${d#*|}
+    if bash -c "$cmd" | gzip > "$copia/dump/$nome.sql.gz.tmp" && [[ ${PIPESTATUS[0]} -eq 0 ]]; then
+        mv "$copia/dump/$nome.sql.gz.tmp" "$copia/dump/$nome.sql.gz"
+    else
+        rm -f "$copia/dump/$nome.sql.gz.tmp"
+        echo "copia-nvme: dump $nome fallito (resta quello precedente)" >&2
+        errori=1
+    fi
+done
+if ! "$rsync" -aHA --numeric-ids --delete "$veloce/" "$copia/file/"; then
+    echo "copia-nvme: copia delle cartelle fallita" >&2
+    errori=1
+fi
+date -Is > "$copia/ultima-copia"
+exit $errori

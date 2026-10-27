@@ -13,6 +13,8 @@ systemctl enable docker.service tailscaled.service
 
 # Tailscale come la LAN: interfaccia nella zona fidata
 firewall-offline-cmd --zone=trusted --add-interface=tailscale0
+# Porta WireGuard di Tailscale: senza, solo collegamenti via relay DERP
+firewall-offline-cmd --zone=public --add-port=41641/udp
 
 # Stack Docker: elenco in /etc/nas-os/stacks.conf (dal repo privato nas-stacks)
 chmod 755 /usr/libexec/nas-os/avvia-stack
@@ -35,3 +37,7 @@ chmod 755 /usr/libexec/nas-os/backup /usr/libexec/nas-os/avviso
 systemctl enable nas-backup.timer
 
 echo 'd /var/lib/nas-os/secrets 0700 root root -' > /usr/lib/tmpfiles.d/nas-os.conf
+
+# Copia oraria dell'NVMe veloce sul RAID
+chmod 755 /usr/libexec/nas-os/copia-nvme
+systemctl enable nas-copia-nvme.timer

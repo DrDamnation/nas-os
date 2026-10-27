@@ -12,7 +12,10 @@ systemctl stop tailscaled.service
 mkdir -p "$dst"
 [[ -e $dst/tailscaled.state ]] && mv "$dst/tailscaled.state" "$dst/tailscaled.state.prima-$(date +%Y%m%d%H%M%S)"
 cp -a "$src/." "$dst/"
+# Su ADM i file erano di altri utenti: tailscaled (StateDirectory) vuole root e l'etichetta giusta
+chown -R root:root "$dst"
 chmod 700 "$dst"
+restorecon -R "$dst" 2>/dev/null || true
 systemctl start tailscaled.service
 sleep 5
 tailscale status --self --peers=false || true

@@ -95,9 +95,18 @@ check "cartella segreti 0700" grep -q '^d /var/lib/nas-os/secrets 0700 root root
 check "backup.conf solo esempio" bash -c '! grep -vE "^[[:space:]]*(#|$)" /etc/nas-os/backup.conf'
 check "jq e curl per l'avviso" bash -c 'command -v jq && command -v curl'
 
+section "Docker e NVMe"
+check "docker senza --selinux-enabled" bash -c "! systemctl cat docker.service | grep -E '^ExecStart=.+' | tail -1 | grep -q selinux-enabled"
+check "dati docker sulla partizione grande" grep -q '"data-root": "/var/home/docker"' /etc/docker/daemon.json
+check "log docker limitati" grep -q '"max-size": "20m"' /etc/docker/daemon.json
+check "copia-nvme eseguibile" test -x /usr/libexec/nas-os/copia-nvme
+check "copia-nvme ogni ora" grep -q 'OnCalendar=hourly' /usr/lib/systemd/system/nas-copia-nvme.timer
+check "porta Tailscale aperta" bash -c "firewall-offline-cmd --zone=public --list-ports | grep -qw 41641/udp"
+check "adotta-tailscale sistema proprietario ed etichette" grep -q 'restorecon -R "\$dst"' /usr/libexec/nas-os/adotta-tailscale
+
 section "Primo avvio (preset-all, come fa systemd al primo boot)"
 systemctl preset-all >/dev/null 2>&1 || true
-for u in fancontrol.service var-mnt-dati.mount smartd.service raid-check.timer docker.service tailscaled.service nas-stacks.service smb.service nas-backup.timer cockpit.service; do
+for u in nas-copia-nvme.timer fancontrol.service var-mnt-dati.mount smartd.service raid-check.timer docker.service tailscaled.service nas-stacks.service smb.service nas-backup.timer cockpit.service; do
     check "$u resta abilitato dopo preset-all" systemctl is-enabled "$u"
 done
 check "fancontrol non salta senza /etc/fancontrol" grep -qx 'ConditionFileNotEmpty=' /usr/lib/systemd/system/fancontrol.service.d/10-nas.conf

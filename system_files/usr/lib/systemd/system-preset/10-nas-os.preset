@@ -10,3 +10,4 @@ enable nas-stacks.service
 enable smb.service
 enable nas-backup.timer
 enable cockpit.service
+enable nas-copia-nvme.timer
