@@ -11,7 +11,10 @@ else mapfile -t files < <(git ls-files); fi
 (( ${#files[@]} )) || { echo "Nessun file da controllare"; exit 0; }
 
 declare -A regole=(
-  [password_scritta]='(^|[^A-Za-z0-9_-])(psk|password|passwd|pwd|secret|token|api[_-]?key)[[:space:]]*[=:][[:space:]]*["'"'"']?[^"'"'"'$<{[:space:]][^[:space:]]{3,}'
+  # valore tra virgolette (ovunque): "pass": "abcd", TOKEN='xyz1'
+  [password_scritta]='(^|[^A-Za-z0-9-])([A-Za-z0-9]+_)*(psk|pw|pass|passw|password|passwd|pwd|secret|token|api[_-]?key)(_[A-Za-z0-9]+)*["'"'"']?[[:space:]]*[=:][[:space:]]*["'"'"'][^"'"'"'$<{[:space:]]{4,}'
+  # valore senza virgolette: solo nei file di configurazione (in codice e' una variabile)
+  [password_config]='(^|[^A-Za-z0-9-])([A-Za-z0-9]+_)*(psk|pw|pass|passw|password|passwd|pwd|secret|token|api[_-]?key)(_[A-Za-z0-9]+)*["'"'"']?[[:space:]]*[=:][[:space:]]*[^"'"'"'$<{?[:space:]][^[:space:]]{3,}'
   [chiave_privata]='BEGIN [A-Z ]*PRIVATE KEY'
   [token_github]='github_pat_|gh[pousr]_[A-Za-z0-9]{20,}'
   [token_tailscale]='tskey-[a-z]+-[A-Za-z0-9]'
@@ -34,9 +37,23 @@ extra="${SECRETS_SCAN_EXTRA:-}"
 n=0
 while IFS= read -r r; do [[ -n $r ]] && regole[personale_$((++n))]="$r"; done <<<"$extra"
 
+# Regole senza distinzione maiuscole/minuscole (ROUTER_PASS=, API_KEY=...)
+declare -A senza_maiuscole=([password_scritta]=1 [password_config]=1)
+# File di configurazione: unici dove vale password_config
+config_re='(\.(ya?ml|env|conf|cfg|ini|toml|properties|sh)|(^|/)[^./]+)$'
+
 trovati=0
+# File che per nome sono credenziali o stato di un servizio
+nomi=$(printf '%s\n' "${files[@]}" | grep -E '(^|/)(secret|token|state\.json|[^/]*\.state|id_(rsa|ed25519|ecdsa))$')
+if [[ -n $nomi ]]; then
+  trovati=1; echo "[file_credenziali]"; sed 's/^/  /' <<<"$nomi"
+fi
 for nome in "${!regole[@]}"; do
-  hits=$(grep -HInE "${regole[$nome]}" -- "${files[@]}" 2>/dev/null | grep -v 'secrets-scan: ok' | grep -v '^tests/secrets-scan.sh:')
+  opz=-HInE; [[ -n ${senza_maiuscole[$nome]:-} ]] && opz=-HIinE
+  lista=("${files[@]}")
+  if [[ $nome == password_config ]]; then mapfile -t lista < <(printf '%s\n' "${files[@]}" | grep -E "$config_re"); fi
+  (( ${#lista[@]} )) || continue
+  hits=$(grep $opz "${regole[$nome]}" -- "${lista[@]}" 2>/dev/null | grep -v 'secrets-scan: ok' | grep -Ev '^tests/secrets-scan(-test)?.sh:')
   if [[ -n $hits ]]; then
     trovati=1
     echo "[$nome]"

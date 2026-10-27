@@ -70,7 +70,8 @@ check "docker abilitato" systemctl is-enabled docker.service
 check "tailscaled abilitato" systemctl is-enabled tailscaled.service
 check "nas-stacks abilitato" systemctl is-enabled nas-stacks.service
 check "stacks.conf senza stack (vengono dal repo privato)" bash -c '! grep -vE "^[[:space:]]*(#|$)" /etc/nas-os/stacks.conf'
-for s in avvia-stack migra-volumi adotta-tailscale; do check "$s eseguibile" test -x /usr/libexec/nas-os/$s; done
+check "certificato ADM letto da /var" bash -c '[ "$(readlink /usr/builtin/etc/certificate)" = /var/lib/nas-os/adm-certificate ]'
+for s in avvia-stack migra-volumi adotta-tailscale dati-in-scrittura; do check "$s eseguibile" test -x /usr/libexec/nas-os/$s; done
 check "tailscale0 nella zona trusted" bash -c 'firewall-offline-cmd --zone=trusted --list-interfaces | grep -qw tailscale0'
 
 section "Samba"

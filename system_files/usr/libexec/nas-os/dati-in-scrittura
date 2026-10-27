@@ -1,0 +1,32 @@
+#!/bin/bash
+# Rende scrivibile il RAID dei dati, per sempre, solo se e2fsck lo trova pulito.
+# Da lanciare una volta, a mano, dopo adotta-md1 e il controllo dei dati (nessun container deve usarlo).
+# Smonta, e2fsck -f -p (corregge solo ciò che è sicuro), drop-in rw della mount unit, rimonta.
+set -euo pipefail
+dev=${DEV:-/dev/md/dati}
+unit=var-mnt-dati.mount
+dropin=${DROPIN:-/etc/systemd/system/$unit.d/rw.conf}
+e2fsck=${E2FSCK:-e2fsck}
+systemctl=${SYSTEMCTL:-systemctl}
+
+[[ -e $dev ]] || { echo "dati-in-scrittura: manca $dev, prima adotta-md1 e mdadm --assemble --scan" >&2; exit 1; }
+if [[ -e $dropin ]]; then echo "dati-in-scrittura: già fatto ($dropin)"; exit 0; fi
+
+$systemctl stop nas-stacks.service "$unit"
+rc=0; $e2fsck -f -p "$dev" || rc=$?
+# 0 = pulito, 1 = errori corretti; da 2 in su (riavvio richiesto, errori rimasti) ci si ferma
+if (( rc > 1 )); then
+    echo "dati-in-scrittura: e2fsck esce con $rc, non cambio nulla. Serve un controllo a mano: e2fsck -f $dev" >&2
+    $systemctl start "$unit"   # torna in sola lettura com'era
+    exit 1
+fi
+
+mkdir -p "$(dirname "$dropin")"
+cat > "$dropin" <<'CONF'
+# Scritto da dati-in-scrittura dopo un e2fsck pulito
+[Mount]
+Options=rw,noatime,nofail,x-systemd.device-timeout=10s
+CONF
+$systemctl daemon-reload
+$systemctl start "$unit"
+echo "dati-in-scrittura: md1 controllato (e2fsck $rc) e montato in scrittura. Ora: nas-stacks."
