@@ -1,0 +1,29 @@
+#!/bin/bash
+# Aggiunge a /etc/mdadm.conf SOLO il RAID dei dati di ADM (partizioni 4 dei dischi, sd?4),
+# come /dev/md/dati. Non assembla nulla: lo fa udev al prossimo avvio o `mdadm --assemble --scan`.
+# Si ferma senza scrivere se trova zero o più di un candidato.
+set -euo pipefail
+conf=${MDADM_CONF:-/etc/mdadm.conf}
+mdadm=${MDADM:-mdadm}
+
+if grep -q '^ARRAY ' "$conf"; then
+    echo "adotta-md1: $conf ha già un ARRAY, non tocco nulla" >&2
+    exit 1
+fi
+
+# Righe: "ARRAY ... UUID=x ..." seguite da "   devices=/dev/sda4,/dev/sdb4"
+mapfile -t candidati < <("$mdadm" --examine --scan --verbose | awk '
+    /^ARRAY/ { for (i = 1; i <= NF; i++) if ($i ~ /^UUID=/) uuid = substr($i, 6) }
+    /devices=/ {
+        sub(/.*devices=/, ""); n = split($0, d, ",")
+        ok = n > 0
+        for (i = 1; i <= n; i++) if (d[i] !~ /^\/dev\/sd[a-z]4$/) ok = 0
+        if (ok) print uuid
+    }')
+
+if (( ${#candidati[@]} != 1 )); then
+    echo "adotta-md1: trovati ${#candidati[@]} RAID su partizioni sd?4, ne serve esattamente 1" >&2
+    exit 1
+fi
+echo "ARRAY /dev/md/dati metadata=1.2 UUID=${candidati[0]}" >> "$conf"
+echo "adotta-md1: aggiunto UUID=${candidati[0]} come /dev/md/dati (montaggio in sola lettura su /var/mnt/dati)"

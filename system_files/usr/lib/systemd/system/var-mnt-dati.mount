@@ -1,0 +1,12 @@
+[Unit]
+Description=Dati del NAS (RAID1 md1 di ADM), in sola lettura finché non è verificato
+# Senza RAID adottato il mount salta in 10 s e l'avvio prosegue
+
+[Mount]
+What=/dev/md/dati
+Where=/var/mnt/dati
+Type=ext4
+Options=ro,noatime,nofail,x-systemd.device-timeout=10s
+
+[Install]
+WantedBy=multi-user.target

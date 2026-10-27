@@ -1,0 +1,35 @@
+#!/bin/bash
+# Scrive la config di fancontrol cercando gli hwmon per nome (i numeri hwmonN cambiano tra avvii).
+# Uso: fancontrol-config <file di uscita>. Esce 1 senza scrivere nulla se manca l'hardware.
+set -eu
+out=${1:?file di uscita}
+sys=${SYS_ROOT:-/sys}
+root=$sys/class/hwmon
+
+ventola="" temp=""
+for h in "$root"/hwmon*; do
+    [[ -e $h/name ]] || continue
+    dev=$(readlink -f "$h/device" 2>/dev/null || true)
+    if [[ $dev == *asustor_it87* && -e $h/pwm1 ]]; then ventola=$h; fi
+    if [[ $(cat "$h/name") == coretemp && -e $h/temp1_input ]]; then temp=$h; fi
+done
+if [[ -z $ventola || -z $temp ]]; then
+    echo "fancontrol-config: ventola asustor_it87 o coretemp non trovati, la ventola resta al BIOS" >&2
+    exit 1
+fi
+
+v=${ventola##*/} t=${temp##*/}
+devpath() { local p; p=$(readlink -f "$1/device"); echo "${p#"$sys"/}"; }
+cat > "$out" <<CONF
+INTERVAL=10
+DEVPATH=$v=$(devpath "$ventola") $t=$(devpath "$temp")
+DEVNAME=$v=$(cat "$ventola/name") $t=coretemp
+FCTEMPS=$v/pwm1=$t/temp1_input
+FCFANS=$v/pwm1=$v/fan1_input
+MINTEMP=$v/pwm1=45
+MAXTEMP=$v/pwm1=75
+MINSTART=$v/pwm1=150
+MINSTOP=$v/pwm1=80
+MINPWM=$v/pwm1=80
+MAXPWM=$v/pwm1=255
+CONF

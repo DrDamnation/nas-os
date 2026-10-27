@@ -1,0 +1,3 @@
+docker:
+  ghcr.io/drdamnation/nas-os:
+    use-sigstore-attachments: true
