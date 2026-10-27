@@ -1,0 +1,18 @@
+#!/bin/bash
+# Riprende l'identità Tailscale di ADM (stesso nodo, stessa firma del tailnet lock).
+# Uso: adotta-tailscale <cartella stato di ADM> --adm-spento
+# Due macchine con la stessa identità si contendono il nodo: va fatto solo con ADM spento.
+set -euo pipefail
+src=${1:?cartella stato di ADM}
+[[ ${2:-} == --adm-spento ]] || { echo "adotta-tailscale: aggiungi --adm-spento (ADM non deve essere acceso)" >&2; exit 1; }
+[[ -s $src/tailscaled.state ]] || { echo "adotta-tailscale: manca $src/tailscaled.state" >&2; exit 1; }
+dst=${TS_DIR:-/var/lib/tailscale}
+
+systemctl stop tailscaled.service
+mkdir -p "$dst"
+[[ -e $dst/tailscaled.state ]] && mv "$dst/tailscaled.state" "$dst/tailscaled.state.prima-$(date +%Y%m%d%H%M%S)"
+cp -a "$src/." "$dst/"
+chmod 700 "$dst"
+systemctl start tailscaled.service
+sleep 5
+tailscale status --self --peers=false || true

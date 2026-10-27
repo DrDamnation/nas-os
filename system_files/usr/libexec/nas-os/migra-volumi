@@ -1,0 +1,22 @@
+#!/bin/bash
+# Copia volumi Docker con nome dalla vecchia radice Docker di ADM (anche se md1 è in sola lettura).
+# Uso: migra-volumi <vecchia radice docker> <volume>...
+# Non sovrascrive mai: se il volume nuovo ha già dati si ferma.
+set -euo pipefail
+docker=${DOCKER:-docker}
+old=${1:?vecchia radice docker}; shift
+(( $# )) || { echo "migra-volumi: nessun volume indicato" >&2; exit 1; }
+
+for v in "$@"; do
+    src="$old/volumes/$v/_data"
+    if [[ ! -d $src ]]; then
+        echo "migra-volumi: $v non esiste in $old" >&2; exit 1
+    fi
+    "$docker" volume inspect "$v" >/dev/null 2>&1 || "$docker" volume create "$v" >/dev/null
+    dst=$("$docker" volume inspect -f '{{.Mountpoint}}' "$v")
+    if [[ -n $(ls -A "$dst") ]]; then
+        echo "migra-volumi: il volume $v non è vuoto ($dst), non tocco nulla" >&2; exit 1
+    fi
+    cp -a "$src/." "$dst/"
+    echo "migra-volumi: $v copiato ($(du -sh "$dst" | cut -f1))"
+done

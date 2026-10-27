@@ -1,0 +1,11 @@
+[Unit]
+Description=Backup notturno di nas-os verso il WD
+After=network-online.target docker.service
+Wants=network-online.target
+OnFailure=nas-avviso@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/nas-os/backup
+Nice=10
+IOSchedulingClass=idle

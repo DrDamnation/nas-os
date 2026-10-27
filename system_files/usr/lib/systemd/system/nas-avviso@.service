@@ -1,0 +1,6 @@
+[Unit]
+Description=Avviso Telegram: %i fallito
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/nas-os/avviso %i

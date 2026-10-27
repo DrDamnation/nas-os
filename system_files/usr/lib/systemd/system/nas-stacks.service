@@ -1,0 +1,14 @@
+[Unit]
+Description=Avvio degli stack Docker di nas-os
+After=docker.service var-mnt-dati.mount network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/nas-os/avvia-stack
+TimeoutStartSec=30min
+
+[Install]
+WantedBy=multi-user.target

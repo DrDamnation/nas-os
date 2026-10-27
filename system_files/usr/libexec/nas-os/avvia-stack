@@ -1,0 +1,35 @@
+#!/bin/bash
+# Avvia gli stack Docker elencati in /etc/nas-os/stacks.conf (una cartella per riga, # = commento).
+# Uno stack rotto non ferma gli altri. Se i dati non sono montati in lettura/scrittura non avvia nulla:
+# succede di proposito al primo avvio, finché md1 non è verificato e rimontato rw.
+set -u
+conf=${1:-/etc/nas-os/stacks.conf}
+docker=${DOCKER:-docker}
+dati=${DATI:-/var/mnt/dati}
+mounts=${MOUNTS:-/proc/mounts}
+
+opz=$(awk -v d="$dati" '$2 == d { o = $4 } END { print o }' "$mounts")
+if [[ -z $opz ]]; then
+    echo "avvia-stack: $dati non è montato, nessuno stack avviato"
+    exit 0
+fi
+if [[ ,$opz, != *,rw,* ]]; then
+    echo "avvia-stack: $dati è in sola lettura, nessuno stack avviato"
+    exit 0
+fi
+
+ok=0 falliti=()
+while IFS= read -r riga || [[ -n $riga ]]; do
+    riga=${riga%%#*}
+    riga=$(echo "$riga" | xargs)
+    [[ -z $riga ]] && continue
+    if [[ -d $riga ]] && (cd "$riga" && "$docker" compose up -d); then
+        ok=$((ok + 1))
+    else
+        falliti+=("$riga")
+    fi
+done < "$conf"
+
+echo "avvia-stack: OK $ok / FALLITI ${#falliti[@]}"
+for f in "${falliti[@]}"; do echo "  fallito: $f"; done
+(( ${#falliti[@]} == 0 ))

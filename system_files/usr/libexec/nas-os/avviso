@@ -1,0 +1,15 @@
+#!/bin/bash
+# Manda un avviso Telegram tramite TelegramNotifier quando un servizio nas-os fallisce.
+# Uso: avviso <unità systemd>. Configurazione (segreta) in /var/lib/nas-os/secrets/telegram.env:
+#   URL=http://127.0.0.1:3086/send  CHIAVE=...  CHAT_ID=...
+set -euo pipefail
+unita=${1:?unità}
+env=${TELEGRAM_ENV:-/var/lib/nas-os/secrets/telegram.env}
+[[ -r $env ]] || { echo "avviso: manca $env, avviso non inviato per $unita" >&2; exit 1; }
+URL=http://127.0.0.1:3086/send CHIAVE="" CHAT_ID=""
+# shellcheck source=/dev/null
+source "$env"
+coda=$(journalctl -u "$unita" -n 5 --no-pager -o cat 2>/dev/null || true)
+testo=$(printf '⚠️ NAS: %s non è andato a buon fine (%s)\n\n%s' "$unita" "$(date '+%d/%m %H:%M')" "$coda")
+jq -n --arg c "$CHAT_ID" --arg t "$testo" '{type: "message", chat_id: $c, text: $t}' |
+    curl -fsS -m 20 -H "Content-Type: application/json" -H "x-bridge-key: $CHIAVE" --data @- "$URL" >/dev/null

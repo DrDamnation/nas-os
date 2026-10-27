@@ -50,6 +50,9 @@ jobs:
           bash tests/secrets-scan.sh
           bash tests/adotta-md1.sh
           bash tests/fancontrol-config.sh
+          bash tests/avvia-stack.sh
+          bash tests/migra-volumi.sh
+          bash tests/backup.sh
 
       - name: Check Just Syntax
         shell: bash

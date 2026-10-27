@@ -1,0 +1,36 @@
+#!/bin/bash
+# Backup notturno verso il WD: prima i dump dei database, poi rsync delle cartelle.
+# Ciò che sparisce dal NAS non si perde: finisce in .cestino/<data> sul WD.
+# Uso: backup [conf]   (conf predefinita /etc/nas-os/backup.conf, viene dal repo privato nas-stacks)
+set -uo pipefail
+conf=${1:-/etc/nas-os/backup.conf}
+rsync=${RSYNC:-rsync}
+dumpdir=${DUMPDIR:-/var/lib/nas-os/backup-dump}
+
+[[ -r $conf ]] || { echo "backup: manca $conf" >&2; exit 1; }
+DEST="" CHIAVE="" SORGENTI=() DUMP=()
+# shellcheck source=/dev/null
+source "$conf"
+[[ -n $DEST && -n $CHIAVE && ${#SORGENTI[@]} -gt 0 ]] || { echo "backup: DEST, CHIAVE e SORGENTI sono obbligatori in $conf" >&2; exit 1; }
+
+mkdir -p "$dumpdir"
+for d in "${DUMP[@]}"; do
+    nome=${d%%|*} cmd=${d#*|}
+    if ! bash -c "$cmd" | gzip > "$dumpdir/$nome.sql.gz.tmp"; then
+        rm -f "$dumpdir/$nome.sql.gz.tmp"
+        echo "backup: dump $nome fallito, nessuna copia fatta" >&2
+        exit 1
+    fi
+    mv "$dumpdir/$nome.sql.gz.tmp" "$dumpdir/$nome.sql.gz"
+done
+
+oggi=$(date +%F)
+for src in "${SORGENTI[@]}" "$dumpdir"; do
+    echo "backup: $src"
+    if ! "$rsync" -aH --delete --backup --backup-dir=".cestino/$oggi" \
+            -e "ssh -i $CHIAVE -o BatchMode=yes -o ConnectTimeout=30" "$src" "$DEST/"; then
+        echo "backup: rsync di $src fallito, mi fermo" >&2
+        exit 1
+    fi
+done
+echo "backup: completato $(date '+%F %T')"

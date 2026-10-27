@@ -62,4 +62,33 @@ for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 100.64.0.0/10; do
     check "cockpit da $net" bash -c "firewall-offline-cmd --zone=public --list-rich-rules | grep -q 'address=\"$net\"'"
 done
 
+section "Servizi"
+check "/volume1 punta ai dati" bash -c '[ "$(readlink /volume1)" = var/mnt/dati ]'
+check "/share punta ai dati" bash -c '[ "$(readlink /share)" = var/mnt/dati ]'
+check "stub DNS spento (porta 53 per Pi-hole)" grep -qx 'DNSStubListener=no' /usr/lib/systemd/resolved.conf.d/10-nas.conf
+check "docker abilitato" systemctl is-enabled docker.service
+check "tailscaled abilitato" systemctl is-enabled tailscaled.service
+check "nas-stacks abilitato" systemctl is-enabled nas-stacks.service
+check "stacks.conf senza stack (vengono dal repo privato)" bash -c '! grep -vE "^[[:space:]]*(#|$)" /etc/nas-os/stacks.conf'
+for s in avvia-stack migra-volumi adotta-tailscale; do check "$s eseguibile" test -x /usr/libexec/nas-os/$s; done
+check "tailscale0 nella zona trusted" bash -c 'firewall-offline-cmd --zone=trusted --list-interfaces | grep -qw tailscale0'
+
+section "Samba"
+check "smb.conf valido" testparm -s --suppress-prompt /etc/samba/smb.conf
+check "condivisioni dal registro (Cockpit)" grep -q 'include = registry' /etc/samba/smb.conf
+check "solo reti fidate" grep -q 'hosts allow = 127.0.0.1 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 100.64.0.0/10' /etc/samba/smb.conf
+check "niente ospiti" grep -q 'map to guest = never' /etc/samba/smb.conf
+check "smb abilitato" systemctl is-enabled smb.service
+check "samba NON aperto a tutti" bash -c '! firewall-offline-cmd --zone=public --list-services | grep -qw samba'
+check "samba da 4 reti fidate" bash -c "[ \$(firewall-offline-cmd --zone=public --list-rich-rules | grep -c 'service name=\"samba\" accept') = 4 ]"
+
+section "Backup"
+check "timer backup abilitato" systemctl is-enabled nas-backup.timer
+check "backup alle 03:30" grep -q 'OnCalendar=\*-\*-\* 03:30:00' /usr/lib/systemd/system/nas-backup.timer
+check "avviso se fallisce" grep -q 'OnFailure=nas-avviso@%n.service' /usr/lib/systemd/system/nas-backup.service
+for s in backup avviso; do check "$s eseguibile" test -x /usr/libexec/nas-os/$s; done
+check "cartella segreti 0700" grep -q '^d /var/lib/nas-os/secrets 0700 root root' /usr/lib/tmpfiles.d/nas-os.conf
+check "backup.conf solo esempio" bash -c '! grep -vE "^[[:space:]]*(#|$)" /etc/nas-os/backup.conf'
+check "jq e curl per l'avviso" bash -c 'command -v jq && command -v curl'
+
 finish
