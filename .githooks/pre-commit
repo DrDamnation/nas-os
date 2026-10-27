@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Prima di ogni commit: controlla i file in stage. Attivare con: git config core.hooksPath .githooks
+mapfile -t f < <(git diff --cached --name-only --diff-filter=ACM)
+(( ${#f[@]} )) || exit 0
+exec bash "$(git rev-parse --show-toplevel)/tests/secrets-scan.sh" "${f[@]}"

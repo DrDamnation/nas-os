@@ -1,0 +1,11 @@
+# Segreti: mai nel repo, vivono solo sul NAS in /var/lib/nas-os/secrets
+.env
+*.env
+!*.env.example
+secrets/
+*.key
+*.pem
+auth.json
+id_*
+!id_*.pub
+.secrets-scan-extra
