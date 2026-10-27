@@ -25,7 +25,12 @@ autopart --noswap --type=plain --fstype=xfs
 rootpw --lock
 reboot --eject
 
-%post --erroronfail --log=/root/nas-os-post.log
+%post --log=/root/nas-os-post.log
+# Prima di tutto la chiave per root: accesso garantito anche se il resto fallisce.
+install -d -m 700 /var/roothome/.ssh
+echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILSgnGqraMQ8+DyAZzPB9Nkz5zhgqHdPNMeUq1Ohd3df' > /var/roothome/.ssh/authorized_keys
+chmod 600 /var/roothome/.ssh/authorized_keys
+restorecon -R /var/roothome 2>/dev/null || true
 # Utente creato qui e non con "user"/"sshkey": su uCore wheel e users stanno in
 # /usr/lib/group (nss-altfiles) e l'installer non li vede ("user daniele does not exist").
 for g in wheel users; do

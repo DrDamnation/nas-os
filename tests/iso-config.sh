@@ -25,6 +25,9 @@ check "password di root bloccata" grep -qx 'rootpw --lock' "$K"
 check "nessuna password in chiaro" ! grep -Eq -- '--(plaintext|password|iscrypted)' "$K"
 check "segue l'immagine firmata" grep -q 'bootc switch --mutate-in-place --enforce-container-sigpolicy --transport registry ghcr.io/drdamnation/nas-os:stable' "$K"
 
+check "chiave anche per root (seconda via d'accesso)" grep -q "> /var/roothome/.ssh/authorized_keys" "$K"
+check "il %post non si ferma al primo errore" ! grep -q '%post --erroronfail' "$K"
+
 section "TOML"
 py=""
 for p in python3 python; do "$p" -c 'import tomllib' 2>/dev/null && { py=$p; break; }; done
