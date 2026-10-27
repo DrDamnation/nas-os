@@ -62,6 +62,9 @@ for net in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 100.64.0.0/10; do
     check "cockpit da $net" bash -c "firewall-offline-cmd --zone=public --list-rich-rules | grep -q 'address=\"$net\"'"
 done
 
+section "Installazione"
+check "radice xfs dichiarata per l'installer" grep -qx 'type = "xfs"' /usr/lib/bootc/install/00-nas-os.toml
+
 section "Servizi"
 check "/volume1 punta ai dati" bash -c '[ "$(readlink /volume1)" = var/mnt/dati ]'
 check "/share punta ai dati" bash -c '[ "$(readlink /share)" = var/mnt/dati ]'

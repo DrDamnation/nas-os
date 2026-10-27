@@ -1,0 +1,3 @@
+# Filesystem della radice per bootc install e per bootc-image-builder (ISO)
+[install.filesystem.root]
+type = "xfs"
