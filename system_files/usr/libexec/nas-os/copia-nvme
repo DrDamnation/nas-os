@@ -2,6 +2,7 @@
 # Copia oraria dell'NVMe veloce sul RAID: l'NVMe è un disco solo, il RAID ne tiene sempre una copia.
 # 1) dump coerenti dei database (gli stessi DUMP di backup.conf), 2) copia delle cartelle.
 # Uso: copia-nvme [backup.conf]. Esce 1 se qualcosa non va (l'avviso Telegram parte da systemd).
+umask 077  # dump e copie contengono dati sensibili (Vaultwarden)
 set -uo pipefail
 conf=${1:-/etc/nas-os/backup.conf}
 veloce=${VELOCE:-/var/home/veloce}

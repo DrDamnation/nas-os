@@ -2,6 +2,7 @@
 # Backup notturno verso il WD: prima i dump dei database, poi rsync delle cartelle.
 # Ciò che sparisce dal NAS non si perde: finisce in .cestino/<data> sul WD.
 # Uso: backup [conf]   (conf predefinita /etc/nas-os/backup.conf, viene dal repo privato nas-stacks)
+umask 077  # dump e copie contengono dati sensibili (Vaultwarden)
 set -uo pipefail
 conf=${1:-/etc/nas-os/backup.conf}
 rsync=${RSYNC:-rsync}
