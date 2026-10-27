@@ -1,7 +1,7 @@
 # ISO d'installazione nas-os: AUTOMATICA, nessuna domanda a schermo.
 # Sicurezze: parte solo sull'Asustor (DMI Jasper Lake) con l'NVMe Crucial CT500P1SSD8,
 # e vede SOLO l'NVMe: eMMC (ADM) e dischi dei dati restano intatti.
-# Nessun segreto: accesso solo con la chiave SSH pubblica qui sotto, password bloccate.
+# Nessun segreto: accesso solo con la chiave SSH pubblica nel %post, password bloccate.
 [customizations.installer.kickstart]
 contents = """
 %pre --erroronfail --log=/tmp/nas-os-pre.log
@@ -23,11 +23,22 @@ ignoredisk --only-use=nvme0n1
 clearpart --all --initlabel --drives=nvme0n1 --disklabel=gpt
 autopart --noswap --type=plain --fstype=xfs
 rootpw --lock
-user --name=daniele --uid=1003 --groups=wheel,users --lock
-sshkey --username=daniele "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILSgnGqraMQ8+DyAZzPB9Nkz5zhgqHdPNMeUq1Ohd3df"
 reboot --eject
 
-%post --erroronfail
+%post --erroronfail --log=/root/nas-os-post.log
+# Utente creato qui e non con "user"/"sshkey": su uCore wheel e users stanno in
+# /usr/lib/group (nss-altfiles) e l'installer non li vede ("user daniele does not exist").
+for g in wheel users; do
+    grep -q "^$g:" /etc/group || grep "^$g:" /usr/lib/group >> /etc/group
+done
+id daniele >/dev/null 2>&1 || useradd -m -d /var/home/daniele -u 1003 -g users -G wheel daniele
+passwd -l daniele
+install -d -m 700 -o daniele -g users /var/home/daniele/.ssh
+echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILSgnGqraMQ8+DyAZzPB9Nkz5zhgqHdPNMeUq1Ohd3df' > /var/home/daniele/.ssh/authorized_keys
+chown daniele:users /var/home/daniele/.ssh/authorized_keys
+chmod 600 /var/home/daniele/.ssh/authorized_keys
+restorecon -R /var/home/daniele 2>/dev/null || true
+id daniele
 bootc switch --mutate-in-place --enforce-container-sigpolicy --transport registry ghcr.io/drdamnation/nas-os:stable
 echo 'daniele ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/90-daniele
 chmod 440 /etc/sudoers.d/90-daniele
