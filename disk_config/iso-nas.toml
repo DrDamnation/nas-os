@@ -1,0 +1,35 @@
+# ISO d'installazione nas-os: AUTOMATICA, nessuna domanda a schermo.
+# Sicurezze: parte solo sull'Asustor (DMI Jasper Lake) con l'NVMe Crucial CT500P1SSD8,
+# e vede SOLO l'NVMe: eMMC (ADM) e dischi dei dati restano intatti.
+# Nessun segreto: accesso solo con la chiave SSH pubblica qui sotto, password bloccate.
+[customizations.installer.kickstart]
+contents = """
+%pre --erroronfail --log=/tmp/nas-os-pre.log
+prodotto=$(cat /sys/class/dmi/id/product_name 2>/dev/null)
+modello=$(cat /sys/block/nvme0n1/device/model 2>/dev/null | xargs)
+if [ "$prodotto" != "Jasper Lake Client Platform" ] || [ "$modello" != "CT500P1SSD8" ]; then
+    echo "nas-os: QUESTA NON E' LA MACCHINA GIUSTA (prodotto='$prodotto' nvme='$modello'). Non installo nulla." > /dev/tty1
+    sleep 600
+    exit 1
+fi
+%end
+
+text
+lang it_IT.UTF-8
+keyboard it
+timezone Europe/Rome --utc
+network --bootproto=dhcp --activate --hostname=nas
+ignoredisk --only-use=nvme0n1
+clearpart --all --initlabel --drives=nvme0n1 --disklabel=gpt
+autopart --noswap --type=plain --fstype=xfs
+rootpw --lock
+user --name=daniele --groups=wheel --lock
+sshkey --username=daniele "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILSgnGqraMQ8+DyAZzPB9Nkz5zhgqHdPNMeUq1Ohd3df"
+reboot --eject
+
+%post --erroronfail
+bootc switch --mutate-in-place --enforce-container-sigpolicy --transport registry ghcr.io/drdamnation/nas-os:stable
+echo 'daniele ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/90-daniele
+chmod 440 /etc/sudoers.d/90-daniele
+%end
+"""
