@@ -96,6 +96,7 @@ check "backup.conf solo esempio" bash -c '! grep -vE "^[[:space:]]*(#|$)" /etc/n
 check "jq e curl per l'avviso" bash -c 'command -v jq && command -v curl'
 
 section "Docker e NVMe"
+check "controllo chiavi Ignition spento" bash -c '[ "$(systemctl is-enabled coreos-check-ssh-keys.service 2>&1)" = masked ]'
 check "docker senza --selinux-enabled" bash -c "! systemctl cat docker.service | grep -E '^ExecStart=.+' | tail -1 | grep -q selinux-enabled"
 check "dati docker sulla partizione grande" grep -q '"data-root": "/var/home/docker"' /etc/docker/daemon.json
 check "log docker limitati" grep -q '"max-size": "20m"' /etc/docker/daemon.json

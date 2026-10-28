@@ -5,6 +5,8 @@ source "$(dirname "$0")/vars.sh"
 # Aggiornamento solo manuale: bootc upgrade + riavvio
 systemctl disable bootc-fetch-apply-updates.timer rpm-ostreed-automatic.timer || true
 systemctl mask zincati.service || true
+# Cerca chiavi messe da Ignition: qui le mette il kickstart, il controllo fallirebbe sempre
+systemctl mask coreos-check-ssh-keys.service || true
 
 cat > /usr/share/nas-os/build-info <<INFO
 image=ghcr.io/drdamnation/nas-os
